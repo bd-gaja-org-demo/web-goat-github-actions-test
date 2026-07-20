@@ -1,40 +1,63 @@
-# Quickstart: Black Duck Security Scan Action with polaris:
-#     https://documentation.blackduck.com/bundle/bridge/page/documentation/t_github-polaris-quickstart.html
-name: Polaris Security Scan
+name: Polaris Scan SAST
+
+
 on:
   push:
     branches:
-      - main
-      - master
-      - develop
-      - stage
-      - release
-  pull_request:
-    branches:
-      - main
-      - master
-      - develop
-      - stage
-      - release
-  workflow_dispatch: {}
+      - Polaris-testing
+  workflow_dispatch:
+
 jobs:
   polaris:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Source
+      # --------------------------------------------------
+      # Checkout source code
+      # --------------------------------------------------
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Polaris Security Scan
-        id: polaris-scan
-        uses: blackduck-inc/black-duck-security-scan@v2
+      # --------------------------------------------------
+      # Setup Java (recommended LTS version)
+      # --------------------------------------------------
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          ### SCANNING: Required fields
-          polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
-          polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
-          ### ASSESSMENT TYPES
-          polaris_assessment_types: SCA  # Comma-separated list: SAST,SCA,DAST
-          ### SCANNING: Optional fields
-          polaris_test_sast_location: hybrid
-          polaris_test_sca_location: hybrid
-          ### Configuration if Bridge diagnostic files needs to be uploaded
-          include_diagnostics: true
+          distribution: temurin
+          java-version: '17'
+
+      # --------------------------------------------------
+      # Verify Maven installation
+      # --------------------------------------------------
+      - name: Verify Maven
+        run: mvn -version
+
+      # --------------------------------------------------
+      # Download Black Duck Bridge CLI
+      # --------------------------------------------------
+      - name: Download Bridge CLI
+        run: |
+          curl -fLsS -o bridge.zip \
+            https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/latest/bridge-cli-bundle-linux64.zip
+          unzip -q bridge.zip
+          chmod +x bridge-cli-bundle-linux64/bridge-cli
+
+      # --------------------------------------------------
+      # Run Polaris SAST Scan
+      # --------------------------------------------------
+      - name: Run Polaris SAST
+        env:
+          POLARIS_SERVER_URL: ${{ vars.POLARIS_SERVER_URL }}
+          POLARIS_ACCESS_TOKEN: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+        run: |
+          ./bridge-cli-bundle-linux64/bridge-cli \
+            --stage polaris \
+            polaris.serverUrl=$POLARIS_SERVER_URL \
+            polaris.accessToken=$POLARIS_ACCESS_TOKEN \
+            polaris.application.name=Nirmal_SCM \
+            polaris.project.name=WebGoat \
+            polaris.branch.name=Polaris-testing \
+            polaris.assessment.types=SAST \
+            polaris.waitForScan=true \
+            coverity.build.command="mvn clean install -DskipTests"
