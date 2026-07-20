@@ -2,7 +2,7 @@ name: Black Duck Polaris Full Scan
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master" , "dependabot/github_actions/devops-infra/action-pull-request-1.4.0" ]
 
 jobs:
   polaris-scan:
